@@ -1155,6 +1155,7 @@
                 that.toggle();
             }
 
+            e.stopPropagation();
             e.preventDefault();
         });
 
@@ -1178,6 +1179,7 @@
                     (! that.opened && ["Enter", "ArrowUp", "ArrowDown"].indexOf(e.key) > -1)
                 ) {
                     that.toggle();
+                    e.preventDefault();
                     e.stopPropagation();
                     return;
                 }
@@ -1203,12 +1205,13 @@
                         }
                         typing += e.key;
                         var found = that.search( typing, true );
-                        if ( found.length ) {
+                        if ( found && found.length ) {
                             that.clear();
                             that.setValue( found[0].value );
                         }
                         setTimeout(function () { typing = ''; }, 1000);
                     }
+                    e.preventDefault();
                     e.stopPropagation();
                     return;
                 }
@@ -1264,6 +1267,9 @@
                     }
                 }
             }
+
+            e.preventDefault();
+            e.stopPropagation();
         });
 
         // Mouseover list items
