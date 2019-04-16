@@ -961,7 +961,9 @@
     };
 
     // Main Lib
-    var Selectr = function(el, config) {
+    function Selectr() {};
+
+    Selectr.prototype.init = function(el, config) {
 
         config = config || {};
 
@@ -2276,5 +2278,5 @@
         return option;
     };
 
-    return Selectr;
+    return Selectr.prototype;
 }));
