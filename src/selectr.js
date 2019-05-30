@@ -306,7 +306,7 @@
 
         util.removeClass(item, "excluded");
         if (!custom) {
-            item.innerHTML = item.textContent;
+            item.textContent = item.textContent;
         }
     }
 
@@ -367,13 +367,19 @@
      */
     var createItem = function(option, data) {
         data = data || option;
-        var content = this.customOption ? this.config.renderOption(data) : option.textContent;
-        var opt = util.createElement("li", {
+
+        var elementData = {
             class: "selectr-option",
-            html: content,
             role: "treeitem",
             "aria-selected": false
-        });
+        };
+        if(this.customOption){
+            elementData.html = this.config.renderOption(data); // asume xss prevention in custom render function
+        } else{
+            elementData.textContent = option.textContent; // treat all as plain text
+        }
+
+        var opt = util.createElement("li",elementData);
 
         opt.idx = option.idx;
 
@@ -793,12 +799,15 @@
         var docFrag = document.createDocumentFragment();
         var option = this.options[item.idx];
         var data = this.data ? this.data[item.idx] : option;
-        var content = this.customSelected ? this.config.renderSelection(data) : option.textContent;
+        var elementData = { class: "selectr-tag" };
+        if (this.customSelected){
+            elementData.html = this.config.renderSelection(data); // asume xss prevention in custom render function
+        } else {
+            elementData.textContent = option.textContent;
+        }
+        var tag = util.createElement("li", elementData);
 
-        var tag = util.createElement("li", {
-            class: "selectr-tag",
-            html: content
-        });
+
         var btn = util.createElement("button", {
             class: "selectr-tag-remove",
             type: "button"
@@ -940,7 +949,7 @@
                 util.removeClass(item, "excluded");
                 // Remove the span element for underlining matched items
                 if (!this.customOption) {
-                    item.innerHTML = item.textContent;
+                    item.textContent = item.textContent;
                 }
             }, this);
         }
@@ -953,9 +962,19 @@
      * @return {bool}
      */
     var match = function(query, option) {
-        var result = new RegExp(query, "i").exec(option.textContent);
+        var text = option.textContent;
+        var RX = new RegExp( query, "ig" );
+        var result = RX.exec( text );
         if (result) {
-            return option.textContent.replace(result[0], "<span class='selectr-match'>" + result[0] + "</span>");
+            // #102 stop xss
+            option.innerHTML = "";
+            var span = document.createElement( "span" );
+            span.classList.add( "selectr-match" );
+            span.textContent = result[0];
+            option.appendChild( document.createTextNode( text.substring( 0, result.index ) ) );
+            option.appendChild( span );
+            option.appendChild( document.createTextNode( text.substring( RX.lastIndex ) ) );
+            return true;
         }
         return false;
     };
@@ -1550,8 +1569,12 @@
 
             addTag.call(this, item);
         } else {
-            var data = this.data ? this.data[index] : option;
-            this.label.innerHTML = this.customSelected ? this.config.renderSelection(data) : option.textContent;
+            if (this.customSelected) {
+                this.label.innerHTML = this.config.renderSelection(data);
+            } else {
+                // no xss
+                this.label.textContent = option.textContent;
+            }
 
             this.selectedValue = option.value;
             this.selectedIndex = index;
@@ -1908,7 +1931,7 @@
 
                         // Underline the matching results
                         if ( !this.customOption ) {
-                            item.innerHTML = match( string, option );
+                            match( string, option );
                         }
                     }
                 } else if ( live ) {
