@@ -1,5 +1,5 @@
 /*!
- * Selectr 2.4.0
+ * Selectr 2.4.12
  * http://mobius.ovh/docs/selectr
  *
  * Released under the MIT license
@@ -8,7 +8,7 @@
     var plugin = "Selectr";
 
     if (typeof define === "function" && define.amd) {
-        define([], factory(plugin));
+        define([], factory);
     } else if (typeof exports === "object") {
         module.exports = factory(plugin);
     } else {
@@ -16,90 +16,6 @@
     }
 }(this, function(plugin) {
     'use strict';
-
-    /**
-     * Default configuration options
-     * @type {Object}
-     */
-    var defaultConfig = {
-        /**
-         * Emulates browser behaviour by selecting the first option by default
-         * @type {Boolean}
-         */
-        defaultSelected: true,
-
-        /**
-         * Sets the width of the container
-         * @type {String}
-         */
-        width: "auto",
-
-        /**
-         * Enables/ disables the container
-         * @type {Boolean}
-         */
-        disabled: false,
-
-        /**
-         * Enables / disables the search function
-         * @type {Boolean}
-         */
-        searchable: true,
-
-        /**
-         * Enable disable the clear button
-         * @type {Boolean}
-         */
-        clearable: false,
-
-        /**
-         * Sort the tags / multiselect options
-         * @type {Boolean}
-         */
-        sortSelected: false,
-
-        /**
-         * Allow deselecting of select-one options
-         * @type {Boolean}
-         */
-        allowDeselect: false,
-
-        /**
-         * Close the dropdown when scrolling (@AlexanderReiswich, #11)
-         * @type {Boolean}
-         */
-        closeOnScroll: false,
-
-        /**
-         * Allow the use of the native dropdown (@jonnyscholes, #14)
-         * @type {Boolean}
-         */
-        nativeDropdown: false,
-
-        /**
-         * Allow the use of native typing behavior for toggling, searching, selecting
-         * @type {boolean}
-         */
-        nativeKeyboard: false,
-
-        /**
-         * Set the main placeholder
-         * @type {String}
-         */
-        placeholder: "Select an option...",
-
-        /**
-         * Allow the tagging feature
-         * @type {Boolean}
-         */
-        taggable: false,
-
-        /**
-         * Set the tag input placeholder (@labikmartin, #21, #22)
-         * @type {String}
-         */
-        tagPlaceholder: "Enter a tag..."
-    };
 
     /**
      * Event Emitter
@@ -171,17 +87,25 @@
      * @type {Object}
      */
     var util = {
+      escapeRegExp: function(str) {
+        // source from lodash 3.0.0
+            var _reRegExpChar = /[\\^$.*+?()[\]{}|]/g;
+            var _reHasRegExpChar = new RegExp(_reRegExpChar.source);
+            return (str && _reHasRegExpChar.test(str)) ? str.replace(_reRegExpChar, '\\$&') : str;
+        },
         extend: function(src, props) {
-            props = props || {};
-            var p;
-            for (p in src) {
-                if (src.hasOwnProperty(p)) {
-                    if (!props.hasOwnProperty(p)) {
-                        props[p] = src[p];
+                    for (var prop in props) {
+                            if (props.hasOwnProperty(prop)) {
+                                    var val = props[prop];
+                                    if (val && Object.prototype.toString.call(val) === "[object Object]") {
+                                            src[prop] = src[prop] || {};
+                                            util.extend(src[prop], val);
+                                    } else {
+                                            src[prop] = val;
+                                    }
+                            }
                     }
-                }
-            }
-            return props;
+                    return src;
         },
         each: function(a, b, c) {
             if ("[object Object]" === Object.prototype.toString.call(a)) {
@@ -204,10 +128,7 @@
                 for (i in a)
                     if (i in el) el[i] = a[i];
                     else if ("html" === i) el.innerHTML = a[i];
-                else if ("text" === i) {
-                    var t = d.createTextNode(a[i]);
-                    el.appendChild(t);
-                } else el.setAttribute(i, a[i]);
+                    else el.setAttribute(i, a[i]);
             }
             return el;
         },
@@ -306,7 +227,8 @@
 
         util.removeClass(item, "excluded");
         if (!custom) {
-            item.innerHTML = item.textContent;
+            // remove any <span> highlighting, without xss
+            item.textContent = item.textContent;
         }
     }
 
@@ -367,13 +289,19 @@
      */
     var createItem = function(option, data) {
         data = data || option;
-        var content = this.customOption ? this.config.renderOption(data) : option.textContent;
-        var opt = util.createElement("li", {
+        var elementData =  {
             class: "selectr-option",
-            html: content,
             role: "treeitem",
             "aria-selected": false
-        });
+        };
+
+        if(this.customOption){
+            elementData.html = this.config.renderOption(data); // asume xss prevention in custom render function
+        } else{
+            elementData.textContent = option.textContent; // treat all as plain text
+        }
+        var opt = util.createElement("li",elementData);
+
 
         opt.idx = option.idx;
 
@@ -441,7 +369,7 @@
         this.selected = util.createElement("div", {
             class: "selectr-selected",
             disabled: this.disabled,
-            tabIndex: 1, // enable tabIndex (#9)
+            tabIndex: 0,
             "aria-expanded": false
         });
 
@@ -478,10 +406,16 @@
             this.tags = [];
 
             // Collection of selected values
-            this.selectedValues = this.getSelectedProperties('value');
+            // #93 defaultSelected = false did not work as expected
+            this.selectedValues = (this.config.defaultSelected) ? this.getSelectedProperties('value') : [];
 
             // Collection of selected indexes
             this.selectedIndexes = this.getSelectedProperties('idx');
+        } else {
+            // #93 defaultSelected = false did not work as expected
+            // these values were undefined
+            this.selectedValue = null;
+            this.selectedIndex = -1;
         }
 
         this.selected.appendChild(this.label);
@@ -520,6 +454,13 @@
             this.tagSeperators = [","];
             if (this.config.tagSeperators) {
                 this.tagSeperators = this.tagSeperators.concat(this.config.tagSeperators);
+                var _aTempEscapedSeperators = [];
+                for(var _nTagSeperatorStepCount = 0; _nTagSeperatorStepCount < this.tagSeperators.length; _nTagSeperatorStepCount++){
+                    _aTempEscapedSeperators.push(util.escapeRegExp(this.tagSeperators[_nTagSeperatorStepCount]));
+                }
+                this.tagSeperatorsRegex = new RegExp(_aTempEscapedSeperators.join('|'),'i');
+            } else {
+                this.tagSeperatorsRegex = new RegExp(',','i');
             }
         }
 
@@ -532,7 +473,8 @@
                 autocapitalize: "off",
                 spellcheck: "false",
                 role: "textbox",
-                type: "search"
+                type: "search",
+                placeholder: this.config.messages.searchPlaceholder
             });
             this.inputClear = util.createElement("button", {
                 class: "selectr-input-clear",
@@ -627,6 +569,8 @@
 
                         j++;
                     }, this);
+
+                    this.el.appendChild(optgroup);
                 } else {
                     option = new Option(opt.text, opt.value, false, opt.hasOwnProperty("selected") && opt.selected === true);
 
@@ -707,7 +651,7 @@
 
         if (e.which === 13) {
 
-            if (this.config.taggable && this.input.value.length > 0) {
+            if ( this.noResults || (this.config.taggable && this.input.value.length > 0) ) {
                 return false;
             }
 
@@ -715,6 +659,7 @@
         }
 
         var direction, prevEl = this.items[this.navIndex];
+        var lastIndex = this.navIndex;
 
         switch (e.which) {
             case 38:
@@ -736,10 +681,15 @@
         // Instead of wasting memory holding a copy of this.items
         // with disabled / excluded options omitted, skip them instead
         while (util.hasClass(this.items[this.navIndex], "disabled") || util.hasClass(this.items[this.navIndex], "excluded")) {
-            if (direction) {
-                this.navIndex++;
+            if (this.navIndex > 0 && this.navIndex < this.items.length -1) {
+                if (direction) {
+                    this.navIndex++;
+                } else {
+                    this.navIndex--;
+                }
             } else {
-                this.navIndex--;
+                this.navIndex = lastIndex;
+                break;
             }
 
             if (this.searching) {
@@ -793,12 +743,13 @@
         var docFrag = document.createDocumentFragment();
         var option = this.options[item.idx];
         var data = this.data ? this.data[item.idx] : option;
-        var content = this.customSelected ? this.config.renderSelection(data) : option.textContent;
-
-        var tag = util.createElement("li", {
-            class: "selectr-tag",
-            html: content
-        });
+        var elementData = { class: "selectr-tag" };
+        if (this.customSelected){
+            elementData.html = this.config.renderSelection(data); // asume xss prevention in custom render function
+        } else {
+            elementData.textContent = option.textContent;
+        }
+        var tag = util.createElement("li", elementData);
         var btn = util.createElement("button", {
             class: "selectr-tag-remove",
             type: "button"
@@ -940,30 +891,41 @@
                 util.removeClass(item, "excluded");
                 // Remove the span element for underlining matched items
                 if (!this.customOption) {
-                    item.innerHTML = item.textContent;
+                    // without xss
+                    item.textContent = item.textContent;
                 }
             }, this);
         }
     };
 
     /**
-     * Query matching for searches
+     * Query matching for searches.
+     * Wraps matching text in a span.selectr-match.
+     *
      * @param  {string} query
-     * @param  {HTMLOptionElement} option
-     * @return {bool}
+     * @param  {HTMLOptionElement} option element
+     * @return {bool} true if matched; false otherwise
      */
     var match = function(query, option) {
-        var result = new RegExp(query, "i").exec(option.textContent);
+        var text = option.textContent;
+        var RX = new RegExp( query, "ig" );
+        var result = RX.exec( text );
         if (result) {
-            return option.textContent.replace(result[0], "<span class='selectr-match'>" + result[0] + "</span>");
+            // #102 stop xss
+            option.innerHTML = "";
+            var span = document.createElement( "span" );
+            span.classList.add( "selectr-match" );
+            span.textContent = result[0];
+            option.appendChild( document.createTextNode( text.substring( 0, result.index ) ) );
+            option.appendChild( span );
+            option.appendChild( document.createTextNode( text.substring( RX.lastIndex ) ) );
+            return true;
         }
         return false;
     };
 
     // Main Lib
     var Selectr = function(el, config) {
-
-        config = config || {};
 
         if (!el) {
             throw new Error("You must supply either a HTMLSelectElement or a CSS3 selector string.");
@@ -996,6 +958,107 @@
 
         if (this.rendered) return;
 
+        /**
+         * Default configuration options
+         * @type {Object}
+         */
+        var defaultConfig = {
+            /**
+             * Emulates browser behaviour by selecting the first option by default
+             * @type {Boolean}
+             */
+            defaultSelected: true,
+
+            /**
+             * Sets the width of the container
+             * @type {String}
+             */
+            width: "auto",
+
+            /**
+             * Enables/ disables the container
+             * @type {Boolean}
+             */
+            disabled: false,
+
+            /**
+             * Enables/ disables logic for mobile
+             * @type {Boolean}
+             */
+            disabledMobile: false,
+
+            /**
+             * Enables / disables the search function
+             * @type {Boolean}
+             */
+            searchable: true,
+
+            /**
+             * Enable disable the clear button
+             * @type {Boolean}
+             */
+            clearable: false,
+
+            /**
+             * Sort the tags / multiselect options
+             * @type {Boolean}
+             */
+            sortSelected: false,
+
+            /**
+             * Allow deselecting of select-one options
+             * @type {Boolean}
+             */
+            allowDeselect: false,
+
+            /**
+             * Close the dropdown when scrolling (@AlexanderReiswich, #11)
+             * @type {Boolean}
+             */
+            closeOnScroll: false,
+
+            /**
+             * Allow the use of the native dropdown (@jonnyscholes, #14)
+             * @type {Boolean}
+             */
+            nativeDropdown: false,
+
+            /**
+             * Allow the use of native typing behavior for toggling, searching, selecting
+             * @type {boolean}
+             */
+            nativeKeyboard: false,
+
+            /**
+             * Set the main placeholder
+             * @type {String}
+             */
+            placeholder: "Select an option...",
+
+            /**
+             * Allow the tagging feature
+             * @type {Boolean}
+             */
+            taggable: false,
+
+            /**
+             * Set the tag input placeholder (@labikmartin, #21, #22)
+             * @type {String}
+             */
+            tagPlaceholder: "Enter a tag...",
+
+            messages: {
+                noResults: "No results.",
+                noOptions: "No options available.",
+                maxSelections: "A maximum of {max} items can be selected.",
+                tagDuplicate: "That tag is already in use.",
+                searchPlaceholder: "Search options..."
+            }
+        };
+
+        // add instance reference (#87)
+        this.el.selectr = this;
+
         // Merge defaults with user set config
         this.config = util.extend(defaultConfig, config);
 
@@ -1027,12 +1090,15 @@
         this.navigating = false;
 
         this.mobileDevice = false;
-        if (/Android|webOS|iPhone|iPad|BlackBerry|Windows Phone|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent)) {
+
+        if (!this.config.disabledMobile && /Android|webOS|iPhone|iPad|BlackBerry|Windows Phone|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent)) {
             this.mobileDevice = true;
         }
 
         this.customOption = this.config.hasOwnProperty("renderOption") && typeof this.config.renderOption === "function";
         this.customSelected = this.config.hasOwnProperty("renderSelection") && typeof this.config.renderSelection === "function";
+
+        this.supportsEventPassiveOption = this.detectEventPassiveOption();
 
         // Enable event emitter
         Events.mixin(this);
@@ -1072,6 +1138,24 @@
     };
 
     /**
+     * Feature detection: addEventListener passive option
+     * https://dom.spec.whatwg.org/#dom-addeventlisteneroptions-passive
+     * https://github.com/WICG/EventListenerOptions/blob/gh-pages/explainer.md
+     */
+    Selectr.prototype.detectEventPassiveOption = function () {
+        var supportsPassiveOption = false;
+        try {
+            var opts = Object.defineProperty({}, 'passive', {
+                get: function() {
+                    supportsPassiveOption = true;
+                }
+            });
+            window.addEventListener('test', null, opts);
+        } catch (e) {}
+        return supportsPassiveOption;
+    };
+
+    /**
      * Attach the required event listeners
      */
     Selectr.prototype.bindEvents = function() {
@@ -1090,15 +1174,13 @@
                 if (e.changedTouches[0].target === that.el) {
                     that.toggle();
                 }
-            });
+            }, this.supportsEventPassiveOption ? { passive: true } : false);
 
-            if (this.config.nativeDropdown || this.mobileDevice) {
-                this.container.addEventListener("click", function(e) {
-                    if (e.target === that.el) {
-                        that.toggle();
-                    }
-                });
-            }
+            this.container.addEventListener("click", function(e) {
+                if (e.target === that.el) {
+                    that.toggle();
+                }
+            });
 
             var getChangedOptions = function(last, current) {
                 var added=[], removed=last.slice(0);
@@ -1116,6 +1198,9 @@
             // Listen for the change on the native select
             // and update accordingly
             this.el.addEventListener("change", function(e) {
+                if (e.__selfTriggered) {
+                    return;
+                }
                 if (that.el.multiple) {
                     var indexes = that.getSelectedProperties('idx');
                     var changes = getChangedOptions(that.selectedIndexes, indexes);
@@ -1138,13 +1223,12 @@
         }
 
         // Open the dropdown with Enter key if focused
-        if (this.config.nativeDropdown) {
+        if ( this.config.nativeDropdown ) {
             this.container.addEventListener("keydown", function(e) {
                 if (e.key === "Enter" && that.selected === document.activeElement) {
-                    // Show the native
+                    // show native dropdown
                     that.toggle();
-
-                    // Focus on the native multiselect
+                    // focus on it
                     setTimeout(function() {
                         that.el.focus();
                     }, 200);
@@ -1159,7 +1243,6 @@
                 that.toggle();
             }
 
-            e.stopPropagation();
             e.preventDefault();
         });
 
@@ -1333,26 +1416,28 @@
                 that.search();
 
                 if (that.config.taggable && this.value.length) {
-                    var val = this.value.trim();
+                    var _sVal = this.value.trim();
 
-                    if (e.which === 13 || util.includes(that.tagSeperators, e.key)) {
+                    if (_sVal.length && (e.which === 13 || that.tagSeperatorsRegex.test(_sVal) )) {
+                        var _sGrabbedTagValue = _sVal.replace(that.tagSeperatorsRegex, '');
+                        _sGrabbedTagValue = util.escapeRegExp(_sGrabbedTagValue);
+                        _sGrabbedTagValue = _sGrabbedTagValue.trim();
 
-                        util.each(that.tagSeperators, function(i, k) {
-                            val = val.replace(k, '');
-                        });
+                        var _oOption;
+                        if(_sGrabbedTagValue.length){
+                            _oOption = that.add({
+                                value: _sGrabbedTagValue,
+                                textContent: _sGrabbedTagValue,
+                                selected: true
+                            }, true);
+                        }
 
-                        var option = that.add({
-                            value: val,
-                            text: val,
-                            selected: true
-                        }, true);
-
-                        if (!option) {
-                            this.value = '';
-                            that.setMessage('That tag is already in use.');
-                        } else {
+                        if(_oOption){
                             that.close();
                             clearSearch.call(that);
+                        } else {
+                            this.value = '';
+                            that.setMessage(that.config.messages.tagDuplicate);
                         }
                     }
                 }
@@ -1448,7 +1533,7 @@
         if (this.config.data) {
 
 
-            if (!this.el.multiple && this.config.defaultSelected && this.el.selectedIndex < 0) {
+            if (!this.el.multiple && this.config.defaultSelected && this.el.selectedIndex < 0 && this.config.data.length > 0) {
                 this.select(0);
             }
 
@@ -1498,6 +1583,9 @@
         this.container.parentNode.replaceChild(this.el, this.container);
 
         this.rendered = false;
+
+        // remove reference
+        delete this.el.selectr;
     };
 
     /**
@@ -1541,7 +1629,7 @@
             }
 
             if (this.config.maxSelections && this.tags.length === this.config.maxSelections) {
-                this.setMessage("A maximum of " + this.config.maxSelections + " items can be selected.", true);
+                this.setMessage(this.config.messages.maxSelections.replace("{max}", this.config.maxSelections), true);
                 return false;
             }
 
@@ -1551,7 +1639,12 @@
             addTag.call(this, item);
         } else {
             var data = this.data ? this.data[index] : option;
-            this.label.innerHTML = this.customSelected ? this.config.renderSelection(data) : option.textContent;
+            if (this.customSelected) {
+                this.label.innerHTML = this.config.renderSelection(data);
+            } else {
+                // no xss
+                this.label.textContent = option.textContent;
+            }
 
             this.selectedValue = option.value;
             this.selectedIndex = index;
@@ -1584,6 +1677,16 @@
         this.emit("selectr.change", option);
 
         this.emit("selectr.select", option);
+
+        // fire native change event
+        if ("createEvent" in document) {
+            var evt = document.createEvent("HTMLEvents");
+            evt.initEvent("change", true, true);
+            evt.__selfTriggered = true;
+            this.el.dispatchEvent(evt);
+        } else {
+            this.el.fireEvent("onchange");
+        }
     };
 
     /**
@@ -1633,6 +1736,16 @@
         this.emit("selectr.change", null);
 
         this.emit("selectr.deselect", option);
+
+        // fire native change event
+        if ("createEvent" in document) {
+            var evt = document.createEvent("HTMLEvents");
+            evt.initEvent("change", true, true);
+            evt.__selfTriggered = true;
+            this.el.dispatchEvent(evt);
+        } else {
+            this.el.fireEvent("onchange");
+        }
     };
 
     /**
@@ -1652,7 +1765,7 @@
         }
 
         util.each(this.options, function(i, option) {
-            if (isArray && util.includes(value.toString(), option.value) || option.value === value) {
+            if (isArray && (value.indexOf(option.value) > -1) || option.value === value) {
                 this.change(option.idx);
             }
         }, this);
@@ -1708,7 +1821,6 @@
      */
     Selectr.prototype.add = function(data, checkDuplicate) {
         if (data) {
-
             this.data = this.data || [];
             this.items = this.items || [];
             this.options = this.options || [];
@@ -1755,12 +1867,12 @@
                     this.select(option.idx);
                 }
 
+                                // We may have had an empty select so update
+                                // the placeholder to reflect the changes.
+                                this.setPlaceholder();
+
                 return option;
             }
-
-            // We may have had an empty select so update
-            // the placeholder to reflect the changes.
-            this.setPlaceholder();
 
             // Recount the pages
             if (this.config.pagination) {
@@ -1782,7 +1894,7 @@
             util.each(o, function(i, opt) {
                 if (util.isInt(opt)) {
                     options.push(this.getOptionByIndex(opt));
-                } else if (typeof o === "string") {
+                } else if (typeof opt === "string") {
                     options.push(this.getOptionByValue(opt));
                 }
             }, this);
@@ -1908,7 +2020,7 @@
 
                         // Underline the matching results
                         if ( !this.customOption ) {
-                            item.innerHTML = match( string, option );
+                            match( string, option );
                         }
                     }
                 } else if ( live ) {
@@ -1920,12 +2032,14 @@
                 // Append results
                 if ( !f.childElementCount ) {
                     if ( !this.config.taggable ) {
-                        this.setMessage( "no results." );
+                        this.noResults = true;
+                        this.setMessage( this.config.messages.noResults );
                     }
                 } else {
                     // Highlight top result (@binary-koan #26)
                     var prevEl = this.items[this.navIndex];
-                    var firstEl = f.firstElementChild;
+                    var firstEl = f.querySelector(".selectr-option:not(.excluded)");
+                    this.noResults = false;
 
                     util.removeClass( prevEl, "active" );
                     this.navIndex = firstEl.idx;
@@ -2120,7 +2234,7 @@
      * Clear all selections
      * @return {void}
      */
-    Selectr.prototype.clear = function(force) {
+    Selectr.prototype.clear = function(force, isClearLast) {
 
         if (this.el.multiple) {
             // Loop over the selectedIndexes so we don't have to loop over all the options
@@ -2130,9 +2244,13 @@
                 // Copy the array or we'll get an error
                 var indexes = this.selectedIndexes.slice();
 
-                util.each(indexes, function(i, idx) {
-                    this.deselect(idx);
-                }, this);
+                if (isClearLast) {
+                    this.deselect(indexes.slice(-1)[0]);
+                } else {
+                    util.each(indexes, function(i, idx) {
+                        this.deselect(idx);
+                    }, this);
+                }
             }
         } else {
             if (this.selectedIndex > -1) {
@@ -2184,7 +2302,7 @@
         placeholder = placeholder || this.config.placeholder || this.el.getAttribute("placeholder");
 
         if (!this.options.length) {
-            placeholder = "No options available";
+            placeholder = this.config.messages.noOptions;
         }
 
         this.placeEl.innerHTML = placeholder;

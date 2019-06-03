@@ -63,6 +63,7 @@
 
             assert.equal( typeof selectr, "object", "can create new instance" );
             assert.equal( selectr.el, s, "instance has reference to <select> element" );
+            assert.equal( s.selectr, selectr, "<select> element has reference to instance" );
 
             selectr.destroy();
             document.body.removeChild(s);
@@ -155,6 +156,11 @@
                 multiSelectr.getValue(),
                 ["value-2", "value-5"],
                 "select-multi: sets and gets multiple values"
+            );
+            assert.deepEqual(
+                multiSelectr.getValue( true ),
+                { values: [{ text: "two", value: "value-2" },{ text: "five", value: "value-5" }] },
+                "gets selected values in object format"
             );
 
             multiSelectr.__done__();
@@ -340,8 +346,69 @@
             multiSelectr.__done__();
         });
 
+        QUnit.test( "defaultSelected", function ( assert ) {
+             // #93 defaultSelected = false did not work as expected
+             // The selectr instance with a complete select elemnt in the dom 
+             // did also not give the same results as a selectr instance created with data to its constructor. 
+
+            var oneSelectr = newSelectr({defaultSelected: false});
+
+            assert.equal(
+                oneSelectr.getValue(),
+                null,
+                "select-one: Default selection turned off"
+            );
+
+            oneSelectr.__done__();
+
+            var multiSelectr = newSelectr( { defaultSelected: false, multiple: true } );
+               
+            assert.deepEqual(
+                multiSelectr.getValue(),
+                [],
+                "select-multi: no option is selected by default"
+            );
+
+            multiSelectr.__done__();
+
+            // building a selectr instance from a existing select component should have the same results 
+            
+            var s = document.createElement("select");
+            document.body.appendChild(s);
+            
+            var data = exampleData();
+            // Create and append the options
+            for (var i = 0; i < data.length; i++) {
+                var o = document.createElement("option");
+                o.value = data[i].value;
+                o.text = data[i].text;
+                s.appendChild(o);
+            }
+
+            var oneSelectr2 = newSelectr({defaultSelected: false}, s);
+
+            assert.equal(
+                oneSelectr2.getValue(),
+                null,
+                "select-one: Default selection turned off"
+            );
+
+            oneSelectr2.__done__();
+            
+            var multiSelectr2 = newSelectr( { defaultSelected: false, multiple: true }, s);
+               
+            assert.deepEqual(
+                multiSelectr2.getValue(),
+                [],
+                "select-multi: no option is selected by default"
+            );
+
+            multiSelectr2.__done__();
+
+
+        });
+
         // @todo tests for other constructor options/settings:
-        // defaultSelected
         // multiple
         // searchable
         // clearable

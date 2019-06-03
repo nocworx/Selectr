@@ -1,14 +1,19 @@
 # Selectr
+[![npm](https://img.shields.io/npm/dt/mobius1-selectr.svg)](https://www.npmjs.com/package/mobius1-selectr)
+[![npm version](https://badge.fury.io/js/mobius1-selectr.svg)](https://badge.fury.io/js/mobius1-selectr)
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/Mobius1/Selectr/blob/master/LICENSE)
+[![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/Mobius1/Selectr.svg)](http://isitmaintained.com/project/Mobius1/Selectr "Average time to resolve an issue")
+[![Percentage of issues still open](http://isitmaintained.com/badge/open/Mobius1/Selectr.svg)](http://isitmaintained.com/project/Mobius1/Selectr "Percentage of issues still open")
+![](http://img.badgesize.io/Mobius1/Selectr/master/dist/selectr.min.js) ![](http://img.badgesize.io/Mobius1/Selectr/master/dist/selectr.min.js?compression=gzip&label=gzipped)
+
 
 A lightweight, dependency-free, mobile-friendly select box replacement written in vanilla javascript. Just 6.5KB minified and gzipped. Similar to Select2 and Chosen, but without the dependencies.
 
 Supports most modern mobile and desktop browsers including IE9.
 
-Don't forget to check the [wiki](https://github.com/Mobius1/Selectr/wiki) out and view some [demos](https://s.codepen.io/Mobius1/debug/QgdpLN).
+Don't forget to check the [wiki](https://github.com/Mobius1/Selectr/wiki) out and view some [demos](https://s.codepen.io/Mobius1/pen/QgdpLN).
 
----
-
-[![Build Status](https://travis-ci.org/Mobius1/Selectr.svg?branch=master)](https://travis-ci.org/Mobius1/Selectr) [![release](http://github-release-version.herokuapp.com/github/Mobius1/Selectr/release.svg?style=flat)](https://github.com/Mobius1/Selectr/releases/tag/2.4.1) [![npm version](https://badge.fury.io/js/mobius1-selectr.svg)](https://badge.fury.io/js/mobius1-selectr) [![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/Mobius1/Selectr/blob/master/LICENSE) ![](http://img.badgesize.io/Mobius1/selectr/master/dist/selectr.min.js) ![](http://img.badgesize.io/Mobius1/selectr/master/dist/selectr.min.js?compression=gzip&label=gzipped) [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/mobius1/selectr.svg)](http://isitmaintained.com/project/mobius1/selectr "Average time to resolve an issue") [![Percentage of issues still open](http://isitmaintained.com/badge/open/mobius1/selectr.svg)](http://isitmaintained.com/project/mobius1/selectr "Percentage of issues still open")
+Pull requests accepted!
 
 ---
 
@@ -26,7 +31,7 @@ Features:
 * Dynamically add options
 * Much more...
 
-[Documentation](https://github.com/Mobius1/Selectr/wiki) | [Demo](https://s.codepen.io/Mobius1/debug/QgdpLN)
+[Documentation](https://github.com/Mobius1/Selectr/wiki) | [Demo](https://s.codepen.io/Mobius1/pen/QgdpLN)
 
 ---
 
@@ -72,9 +77,9 @@ Start with a standard select box you want to convert:
 
 ```html
 <select id="mySelect">
-	<option vlaue="value-1">Value 1</option>
-	<option vlaue="value-2">Value 2</option>
-	<option vlaue="value-3">Value 3</option>
+	<option value="value-1">Value 1</option>
+	<option value="value-2">Value 2</option>
+	<option value="value-3">Value 3</option>
 	...
 </select>
 ```
@@ -102,11 +107,33 @@ new Selectr('#mySelect', {
 
 ---
 
+# Contributors
+
+* [adrian-enspired](https://github.com/adrian-enspired)
+* [reno1979](https://github.com/reno1979)
+* [snrbrnjna](https://github.com/snrbrnjna)
+* [TchernyavskyDaniil](https://github.com/TchernyavskyDaniil)
+* [istvanmakary](https://github.com/istvanmakary)
+* [pepe4](https://github.com/pepe4)
+* [ericboehs](https://github.com/ericboehs)
+* [detroxx92](https://github.com/detroxx92)
+* [jmromeroes](https://github.com/jmromeroes)
+* [mirkopulvirenti](https://github.com/mirkopulvirenti)
+* [aslafy-z](https://github.com/aslafy-z)
+* [Abduvakilov](https://github.com/Abduvakilov)
+* [jostermanAtPEW](https://github.com/jostermanAtPEW)
+* [mikeymckay](https://github.com/mikeymckay)
+* [minajevs](https://github.com/minajevs)
+
+
+---
+
 If this project helps you then you can grab me a coffee or beer to say thanks.
 
 [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=9B9KD4X57X8V8)
 
 ---
+
 
 # License
 
